@@ -71,6 +71,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
           <span>description: search by description</span>
           <span class="group/edit invisible group-hover/item:visible">+</span>
         </li>
+        <li
+          class="group/item bg-elevation-2-hover flex cursor-pointer items-center justify-between rounded-md p-1 py-1.5"
+          @mousedown="addFilter('assignee:')"
+        >
+          <span>assignee: search by assigned member</span>
+          <span class="group/edit invisible group-hover/item:visible">+</span>
+        </li>
       </ul>
     </div>
   </div>
@@ -102,6 +109,9 @@ const handleInput = () => {
   } else if (displayModel.value.includes("description:")) {
     activeFilter.value = "description:";
     displayModel.value = displayModel.value.replace("description:", "");
+  } else if (displayModel.value.includes("assignee:")) {
+    activeFilter.value = "assignee:";
+    displayModel.value = displayModel.value.replace("assignee:", "");
   }
 
   updateModelValue();
@@ -150,6 +160,9 @@ watch(
     } else if (newValue.startsWith("description:")) {
       activeFilter.value = "description:";
       displayModel.value = newValue.replace("description:", "");
+    } else if (newValue.startsWith("assignee:")) {
+      activeFilter.value = "assignee:";
+      displayModel.value = newValue.replace("assignee:", "");
     } else {
       displayModel.value = newValue;
       activeFilter.value = "";

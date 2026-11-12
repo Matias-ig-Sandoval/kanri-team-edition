@@ -27,6 +27,14 @@ export declare interface Board {
   createdAt?: Date | string;
   title: string;
   globalTags?: Array<Tag> | null;
+  members?: Array<BoardMember> | null;
+}
+
+export declare interface BoardMember {
+  id: string;
+  name: string;
+  role?: string;
+  color?: string | null;
 }
 
 export declare interface BackgroundSettings {
@@ -55,6 +63,10 @@ export declare interface Tag {
 }
 
 export declare interface Card {
+  /** ID of a BoardMember in the parent board's `members` list */
+  assigneeId?: string | null;
+  /** Manual progress (0-100). Ignored while the card has tasks. */
+  progress?: number | null;
   color?: string;
   description?: string;
   dueDate?: Date | string | null;

@@ -125,6 +125,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
           :card="card"
           :index="index"
           :zoom-level="zoomLevel"
+          :members="members"
           @disable-dragging="disableDragging"
           @enable-dragging="enableDragging"
           @open-edit-card-modal="openEditCardModal"
@@ -209,7 +210,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
 </template>
 
 <script setup lang="ts">
-import type { Card, Tag } from "@/types/kanban-types";
+import type { BoardMember, Card, Tag } from "@/types/kanban-types";
 import type { Ref } from "vue";
 
 import { applyDrag } from "@/utils/drag-n-drop";
@@ -228,6 +229,7 @@ const props = defineProps<{
   addToTopButtonShown?: boolean;
   cardCountDisplayEnabled?: boolean;
   cardSearchQuery?: string;
+  members?: Array<BoardMember>;
 }>();
 
 const emit = defineEmits<{
@@ -622,6 +624,22 @@ const filteredCards = computed(() => {
     return cards.value.filter((card) => {
       const cardDescription = card.description || "";
       return cardDescription.toLowerCase().includes(descriptionQuery);
+    });
+  }
+
+  // check for assignee: filter (member name; "none" matches unassigned cards)
+  if (searchQuery.startsWith("assignee:")) {
+    const assigneeQuery = searchQuery.substring(9).trim().toLowerCase();
+    if (!assigneeQuery) return cards.value;
+
+    const boardMembers = props.members ?? [];
+    return cards.value.filter((card) => {
+      const assignee = boardMembers.find(
+        (member) => member.id === card.assigneeId
+      );
+      if (!assignee) return assigneeQuery === "none";
+
+      return assignee.name.toLowerCase().includes(assigneeQuery);
     });
   }
 

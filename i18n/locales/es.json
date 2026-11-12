@@ -203,7 +203,13 @@
       "taskAdd": "Añadir Tarea",
       "newTaskPlaceholder": "Introduzca una tarea...",
       "tagsTitle": "Etiquetas",
-      "tagsEdit": "Editar Etiquetas Globales"
+      "tagsEdit": "Editar Etiquetas Globales",
+      "assigneeTitle": "Responsable",
+      "assigneeNone": "Sin asignar",
+      "membersEdit": "Editar Integrantes del Tablero",
+      "memberNamePlaceholder": "Nombre del integrante...",
+      "memberRolePlaceholder": "Rol (opcional)",
+      "progressManual": "Avance"
     },
     "help": {
       "title": "Ayuda & Recursos",

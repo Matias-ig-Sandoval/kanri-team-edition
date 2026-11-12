@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 import { defineStore } from "pinia";
-import type { Board, Column, Card, Tag } from "@/types/kanban-types";
+import type { Board, BoardMember, Column, Card, Tag } from "@/types/kanban-types";
 import { useTauriStore } from "@/stores/tauriStore";
 import { generateUniqueID } from "@/utils/idGenerator";
 
@@ -35,6 +35,8 @@ export const useBoardsStore = defineStore("boards", {
   getters: {
     boardById: (state) => (id: string) => state.boards.find(b => b.id === id) ?? null,
     isPinned: (state) => (id: string) => !!state.pins.find(p => p.id === id),
+    membersByBoardId: (state) => (id: string): BoardMember[] =>
+      state.boards.find(b => b.id === id)?.members ?? [],
   },
   actions: {
     async init() {
@@ -233,6 +235,52 @@ export const useBoardsStore = defineStore("boards", {
           }
         }
       }
+    },
+
+    // Board member ops
+    addMember(boardId: string, member: Omit<BoardMember, "id"> & { id?: string }) {
+      const b = this.boardById(boardId);
+      if (!b) return;
+      const name = member.name.trim();
+      if (!name) return;
+      if (!b.members) b.members = [];
+
+      // only add if no member with the same name exists already
+      if (b.members.find(m => m.name.toLowerCase() === name.toLowerCase())) return;
+
+      b.members.push({ ...member, id: member.id ?? generateUniqueID(), name });
+      b.lastEdited = new Date();
+    },
+    updateMember(boardId: string, memberId: string, changes: Partial<Omit<BoardMember, "id">>) {
+      const b = this.boardById(boardId);
+      if (!b || !b.members) return;
+      const member = b.members.find(m => m.id === memberId);
+      if (!member) return;
+
+      if (changes.name !== undefined) {
+        const name = changes.name.trim();
+        if (name) member.name = name;
+      }
+      if (changes.role !== undefined) member.role = changes.role;
+      if (changes.color !== undefined) member.color = changes.color;
+      b.lastEdited = new Date();
+    },
+    removeMember(boardId: string, memberId: string) {
+      const b = this.boardById(boardId);
+      if (!b) return;
+
+      if (b.members) {
+        b.members = b.members.filter(m => m.id !== memberId);
+      }
+
+      // Unassign the removed member from all cards on this board
+      for (const col of b.columns) {
+        for (const card of col.cards) {
+          if (card.assigneeId === memberId) card.assigneeId = null;
+        }
+      }
+
+      b.lastEdited = new Date();
     },
 
     // Column ops

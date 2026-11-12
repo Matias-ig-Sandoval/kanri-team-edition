@@ -212,7 +212,13 @@
       "taskAdd": "Add Task",
       "newTaskPlaceholder": "Enter a task...",
       "tagsTitle": "Tags",
-      "tagsEdit": "Edit Board Tags"
+      "tagsEdit": "Edit Board Tags",
+      "assigneeTitle": "Assignee",
+      "assigneeNone": "Unassigned",
+      "membersEdit": "Edit Board Members",
+      "memberNamePlaceholder": "Member name...",
+      "memberRolePlaceholder": "Role (optional)",
+      "progressManual": "Progress"
     },
     "help": {
       "title": "Help & Resources",

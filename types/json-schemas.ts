@@ -43,7 +43,16 @@ const kanriTagSchema = z.object({
   style: z.string().optional(),
 });
 
+const kanriBoardMemberSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: z.string().optional(),
+  color: z.string().optional().nullable(),
+});
+
 const kanriCardSchema = z.object({
+  assigneeId: z.string().optional().nullable(),
+  progress: z.number().min(0).max(100).optional().nullable(),
   color: z.string().optional(),
   description: z.string().optional(),
   id: z.string().optional(),
@@ -78,6 +87,7 @@ const kanriBoardBackgroundSchema = z
 
 export const kanriBoardSchema = z.object({
   globalTags: z.array(kanriTagSchema).optional().nullable(),
+  members: z.array(kanriBoardMemberSchema).optional().nullable(),
   background: kanriBoardBackgroundSchema,
   columns: z.array(kanriColumnSchema),
   id: z.string(),

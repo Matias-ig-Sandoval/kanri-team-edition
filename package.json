@@ -36,7 +36,8 @@
     "rollup": "4.55.1",
     "rollup-plugin-license": "^3.0.1",
     "tailwindcss": "3.4.19",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vue-tsc": "^3.3.14"
   },
   "dependencies": {
     "@eslint/eslintrc": "3.3.5",

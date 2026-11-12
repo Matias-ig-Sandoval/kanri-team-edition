@@ -21,8 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { computed, toValue } from "vue";
 import type { Ref } from "vue";
-import type { Board, Card, Column, Tag } from "@/types/kanban-types";
+import type { Board, BoardMember, Card, Column, Tag } from "@/types/kanban-types";
 import { useBoardsStore } from "@/stores/boards";
+import { clampProgress } from "@/utils/cardProgress";
 
 export function useBoard(id: string | Ref<string>) {
   const store = useBoardsStore();
@@ -201,6 +202,51 @@ export function useBoard(id: string | Ref<string>) {
     });
   };
 
+  const setCardAssignee = (
+    columnId: string,
+    cardId: string | undefined,
+    assigneeId: string | null
+  ) => {
+    if (!board.value) return;
+    if (!cardId) return;
+
+    mutateCard(columnId, cardId, (card) => {
+      card.assigneeId = assigneeId;
+    });
+  };
+
+  const setCardProgress = (
+    columnId: string,
+    cardId: string | undefined,
+    progress: number
+  ) => {
+    if (!board.value) return;
+    if (!cardId) return;
+
+    mutateCard(columnId, cardId, (card) => {
+      card.progress = clampProgress(progress);
+    });
+  };
+
+  // Board members
+  const addMember = (name: string, color?: string) => {
+    if (!board.value) return;
+    store.addMember(board.value.id, { name, color });
+  };
+
+  const updateMember = (
+    memberId: string,
+    changes: Partial<Omit<BoardMember, "id">>
+  ) => {
+    if (!board.value) return;
+    store.updateMember(board.value.id, memberId, changes);
+  };
+
+  const removeMember = (memberId: string) => {
+    if (!board.value) return;
+    store.removeMember(board.value.id, memberId);
+  };
+
   // (Global) Card Tags
   const addGlobalTag = (tag: Tag) => {
     if (!board.value) return;
@@ -257,6 +303,13 @@ export function useBoard(id: string | Ref<string>) {
     setCardTasks,
     setCardDueDate,
     setCardTags,
+    setCardAssignee,
+    setCardProgress,
+
+    // board members
+    addMember,
+    updateMember,
+    removeMember,
 
     // global tags
     addGlobalTag,

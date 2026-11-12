@@ -295,6 +295,82 @@ limitations under the License.
               @editorBlurred="updateDescription"
             />
           </div>
+          <div class="mt-4 flex flex-col pr-6">
+            <h2 class="text-lg font-semibold">
+              {{ $t("modals.editCard.assigneeTitle") }}
+            </h2>
+            <select
+              v-model="assigneeId"
+              class="bg-elevation-1 border-elevation-3 text-normal mt-1 w-full rounded-md border px-2 py-1.5 outline-none"
+              @change="updateAssignee"
+            >
+              <option value="">
+                {{ $t("modals.editCard.assigneeNone") }}
+              </option>
+              <option
+                v-for="member in members"
+                :key="member.id"
+                :value="member.id"
+              >
+                {{ member.role ? `${member.name} (${member.role})` : member.name }}
+              </option>
+            </select>
+            <button
+              class="bg-elevation-3 mt-2 w-fit rounded-md px-2 py-0.5 text-sm"
+              @click="memberManageMode = !memberManageMode"
+            >
+              {{ $t("modals.editCard.membersEdit") }}
+            </button>
+            <div v-if="memberManageMode" class="mt-2 flex flex-col gap-2">
+              <div
+                v-for="member in members"
+                :key="member.id"
+                class="flex flex-row items-center gap-2"
+              >
+                <input
+                  type="color"
+                  class="size-7 shrink-0 cursor-pointer rounded-md border-none bg-transparent p-0"
+                  :value="member.color || defaultMemberColor"
+                  @change="updateMemberField(member.id, 'color', $event)"
+                />
+                <input
+                  type="text"
+                  class="bg-elevation-2 text-normal w-full rounded-md px-2 py-1 outline-none"
+                  maxlength="100"
+                  :value="member.name"
+                  :placeholder="$t('modals.editCard.memberNamePlaceholder')"
+                  @change="updateMemberField(member.id, 'name', $event)"
+                />
+                <input
+                  type="text"
+                  class="bg-elevation-2 text-normal w-full rounded-md px-2 py-1 outline-none"
+                  maxlength="100"
+                  :value="member.role ?? ''"
+                  :placeholder="$t('modals.editCard.memberRolePlaceholder')"
+                  @change="updateMemberField(member.id, 'role', $event)"
+                />
+                <button class="shrink-0" @click="$emit('removeMember', member.id)">
+                  <XMarkIcon class="text-dim-2 text-accent-hover size-4" />
+                </button>
+              </div>
+              <div class="flex flex-row items-center gap-2">
+                <input
+                  v-model="newMemberName"
+                  type="text"
+                  class="bg-elevation-2 text-normal border-accent-focus w-full rounded-md px-2 py-1 focus:border-2 focus:border-dotted focus:outline-none"
+                  maxlength="100"
+                  :placeholder="$t('modals.editCard.memberNamePlaceholder')"
+                  @keypress.enter="createMember"
+                />
+                <button
+                  class="bg-accent text-buttons shrink-0 rounded-md px-4 py-1"
+                  @click="createMember"
+                >
+                  {{ $t("general.addAction") }}
+                </button>
+              </div>
+            </div>
+          </div>
           <div>
             <div class="mb-1 mt-4 flex flex-row items-center gap-2">
               <h2 class="text-lg font-semibold">
@@ -315,6 +391,26 @@ limitations under the License.
                 :style="`transform: translateX(-${100 - getTaskPercentage}%)`"
               />
             </ProgressRoot>
+            <div
+              v-if="tasks.length === 0"
+              class="mb-4 flex w-[96%] flex-row items-center gap-3"
+            >
+              <span class="text-dim-1 shrink-0 text-sm">{{
+                $t("modals.editCard.progressManual")
+              }}</span>
+              <input
+                v-model.number="manualProgress"
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                class="w-full cursor-pointer"
+                @change="updateProgress"
+              />
+              <span class="text-dim-1 w-10 shrink-0 text-right text-sm"
+                >{{ manualProgress }}%</span
+              >
+            </div>
             <div class="flex w-full flex-col gap-1">
               <div
                 v-if="tasks && tasks.length !== 0"
@@ -479,7 +575,8 @@ limitations under the License.
 </template>
 
 <script setup lang="ts">
-import type { Card, Task, Tag } from "@/types/kanban-types";
+import type { BoardMember, Card, Task, Tag } from "@/types/kanban-types";
+import { clampProgress } from "@/utils/cardProgress";
 import type { Ref } from "vue";
 
 import emitter from "@/utils/emitter";
@@ -504,6 +601,7 @@ const props = defineProps<{
   card: Card | null;
   columnId: string;
   globalTags: Array<Tag>;
+  members: Array<BoardMember>;
 }>();
 
 const emit = defineEmits<{
@@ -548,6 +646,25 @@ const emit = defineEmits<{
   ): void;
   (e: "addGlobalTag", tag: Tag): void;
   (e: "openTagEdit"): void;
+  (
+    e: "setCardAssignee",
+    columnID: string,
+    cardId: string | undefined,
+    assigneeId: string | null
+  ): void;
+  (
+    e: "setCardProgress",
+    columnID: string,
+    cardId: string | undefined,
+    progress: number
+  ): void;
+  (e: "addMember", name: string, color?: string): void;
+  (
+    e: "updateMember",
+    memberId: string,
+    changes: Partial<Omit<BoardMember, "id">>
+  ): void;
+  (e: "removeMember", memberId: string): void;
 }>();
 
 const { locale } = useI18n();
@@ -568,6 +685,12 @@ const isDueDateCompleted = ref(false);
 const tag = ref("");
 const tags: Ref<Array<Tag>> = ref([]);
 const autocompleteItems: Ref<Array<Tag>> = ref([]);
+
+const assigneeId = ref("");
+const manualProgress = ref(0);
+const memberManageMode = ref(false);
+const newMemberName = ref("");
+const defaultMemberColor = "#64748b";
 
 const isCustomColor = computed(() => selectedColor.value.startsWith("#"));
 const customColor = ref("#ffffff");
@@ -605,11 +728,45 @@ const getCheckedTaskNumber = computed(() => {
   return tasks.value.filter((task) => task.finished).length || 0;
 });
 
+// Derived from tasks when the card has any, otherwise the manual value
 const getTaskPercentage = computed(() => {
-  if (!tasks.value || tasks.value.length === 0) return 0;
+  if (!tasks.value || tasks.value.length === 0) return manualProgress.value;
 
   return (getCheckedTaskNumber.value / tasks.value.length) * 100;
 });
+
+const updateProgress = () => {
+  manualProgress.value = clampProgress(manualProgress.value);
+  emit("setCardProgress", columnID.value, props.card?.id, manualProgress.value);
+};
+
+const updateAssignee = () => {
+  emit(
+    "setCardAssignee",
+    columnID.value,
+    props.card?.id,
+    assigneeId.value || null
+  );
+};
+
+const createMember = () => {
+  const memberName = newMemberName.value.trim();
+  if (!memberName) return;
+
+  emit("addMember", memberName, defaultMemberColor);
+  newMemberName.value = "";
+};
+
+const updateMemberField = (
+  memberId: string,
+  field: "name" | "role" | "color",
+  event: Event
+) => {
+  const value = (event.target as HTMLInputElement).value;
+  if (field === "name" && !/\S/.test(value)) return;
+
+  emit("updateMember", memberId, { [field]: value.trim() });
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const beforeTagAdd = ({ tag, addTag }: any) => {
@@ -809,6 +966,9 @@ watch(props, (newVal) => {
         ? newVal.card.isDueDateCounterRelative
         : settingsStore.defaultRelativeDueDatesEnabled;
     isDueDateCompleted.value = newVal.card.isDueDateCompleted || false;
+
+    assigneeId.value = newVal.card.assigneeId ?? "";
+    manualProgress.value = clampProgress(newVal.card.progress ?? 0);
 
     tags.value = newVal.card.tags || [];
     tag.value = "";

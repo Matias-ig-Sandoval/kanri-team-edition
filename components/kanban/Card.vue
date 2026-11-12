@@ -132,6 +132,35 @@ limitations under the License.
             <PhClock v-else :class="iconSizeClass" />
             <span :class="taskTextClass">{{ getFormattedDueDate }}</span>
           </div>
+
+          <div
+            v-if="assignee"
+            class="flex max-w-full flex-row items-center gap-1 rounded-sm px-1"
+            :class="assignee.color ? '' : 'bg-elevation-3'"
+            :style="assigneeBadgeStyle"
+            :title="assignee.role ? `${assignee.name} (${assignee.role})` : assignee.name"
+          >
+            <PhUser :class="iconSizeClass" />
+            <span class="truncate" :class="taskTextClass">{{ assignee.name }}</span>
+          </div>
+        </div>
+
+        <div
+          v-if="showProgressBar"
+          class="mt-1 flex w-full flex-row items-center gap-2"
+          @click="$emit('openEditCardModal', card)"
+        >
+          <div
+            class="bg-elevation-3 relative h-1.5 w-full overflow-hidden rounded-full"
+          >
+            <div
+              class="bg-accent-no-hover h-full rounded-full transition-[width] duration-300"
+              :style="{ width: `${cardProgress}%` }"
+            />
+          </div>
+          <span class="shrink-0" :class="[cardTextColorDim, taskTextClass]"
+            >{{ cardProgress }}%</span
+          >
         </div>
       </div>
     </ContextMenuTrigger>
@@ -165,9 +194,10 @@ limitations under the License.
 </template>
 
 <script setup lang="ts">
-import type { Card, Tag } from "@/types/kanban-types";
+import type { BoardMember, Card, Tag } from "@/types/kanban-types";
 
 import { getContrast } from "~/utils/colorUtils";
+import { getCardProgress } from "~/utils/cardProgress";
 import { XMarkIcon } from "@heroicons/vue/24/solid";
 import {
   PhCheckCircle,
@@ -175,6 +205,7 @@ import {
   PhClock,
   PhListChecks,
   PhTextAlignLeft,
+  PhUser,
 } from "@phosphor-icons/vue";
 
 import {
@@ -188,6 +219,7 @@ import {
 const props = defineProps<{
   card: Card;
   zoomLevel: number;
+  members?: Array<BoardMember>;
 }>();
 
 const emit = defineEmits<{
@@ -250,8 +282,42 @@ const cardHasNoExtraProperties = computed(() => {
     isDescriptionEmpty &&
     !dueDate.value &&
     (props.card.tags || []).length === 0 &&
+    !assignee.value &&
+    !showProgressBar.value &&
     !props.card.name.startsWith("---")
   );
+});
+
+const assignee = computed(() => {
+  if (!props.card.assigneeId) return null;
+
+  return (
+    (props.members ?? []).find(
+      (member) => member.id === props.card.assigneeId
+    ) ?? null
+  );
+});
+
+const assigneeBadgeStyle = computed(() => {
+  const color = assignee.value?.color;
+  if (!color) return {};
+
+  return {
+    "background-color": color,
+    color: getContrast(color) === "text-gray-50" ? "#f4f4f5" : "#1e293b",
+  };
+});
+
+// Derived from tasks when the card has any, otherwise the manual value
+const cardProgress = computed(() =>
+  getCardProgress({ tasks: tasks.value, progress: props.card.progress })
+);
+
+const showProgressBar = computed(() => {
+  if (props.card.name === "---") return false;
+  if (tasks.value && tasks.value.length > 0) return true;
+
+  return props.card.progress != null;
 });
 
 const isDescriptionEmpty = computed(() => {
