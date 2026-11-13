@@ -35,6 +35,7 @@
     "kanban": {
       "changeBackground": "Change Background",
       "editTags": "Edit Tags",
+      "editPhases": "Edit Phases",
       "renameBoardAction": "Rename Board",
       "duplicateBoardAction": "Duplicate Board",
       "exportBoardAction": "Export Board",
@@ -171,6 +172,13 @@
     }
   },
   "modals": {
+    "boardPhases": {
+      "title": "Board Phases",
+      "description": "Define the standard phases of this board. Each phase can move the card to a column when completed, and they can be loaded into any card with one click.",
+      "listTitle": "Default phases",
+      "empty": "This board has no default phases yet.",
+      "namePlaceholder": "Phase name..."
+    },
     "cardTags": {
       "title": "Edit card tags",
       "description": "Here you can edit your global tags, which are available for the entire board. Note: Deleting a global tag does not remove them from cards, but only makes it unavailable for new cards.",
@@ -219,7 +227,12 @@
       "membersEdit": "Edit Board Members",
       "memberNamePlaceholder": "Member name...",
       "memberRolePlaceholder": "Role (optional)",
-      "progressManual": "Progress"
+      "progressManual": "Progress",
+      "milestones": "{finished}/{total} milestones",
+      "taskTargetNone": "No column change",
+      "taskTargetTooltip": "Column the card moves to when this item is completed",
+      "phasesLoad": "Load board phases",
+      "phasesEdit": "Edit board phases"
     },
     "help": {
       "title": "Help & Resources",

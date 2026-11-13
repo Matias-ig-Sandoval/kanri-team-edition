@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { computed, toValue } from "vue";
 import type { Ref } from "vue";
-import type { Board, BoardMember, Card, Column, Tag } from "@/types/kanban-types";
+import type { Board, BoardMember, BoardPhase, Card, Column, Tag } from "@/types/kanban-types";
 import { useBoardsStore } from "@/stores/boards";
 import { clampProgress } from "@/utils/cardProgress";
 
@@ -228,6 +228,24 @@ export function useBoard(id: string | Ref<string>) {
     });
   };
 
+  // Default phases and task-driven card moves
+  const setDefaultPhases = (phases: Array<BoardPhase>) => {
+    if (!board.value) return;
+    store.setDefaultPhases(board.value.id, phases);
+  };
+
+  // Returns the ID of the column the card was moved to, otherwise null
+  const moveCardOnTaskFinished = (
+    columnId: string,
+    cardId: string | undefined,
+    taskId: string | undefined
+  ): string | null => {
+    if (!board.value) return null;
+    if (!cardId || !taskId) return null;
+
+    return store.moveCardOnTaskFinished(board.value.id, columnId, cardId, taskId);
+  };
+
   // Board members
   const addMember = (name: string, color?: string) => {
     if (!board.value) return;
@@ -305,6 +323,10 @@ export function useBoard(id: string | Ref<string>) {
     setCardTags,
     setCardAssignee,
     setCardProgress,
+
+    // phases
+    setDefaultPhases,
+    moveCardOnTaskFinished,
 
     // board members
     addMember,

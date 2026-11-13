@@ -19,7 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import type { Card } from "@/types/kanban-types";
+import type { BoardPhase, Card, Task } from "@/types/kanban-types";
 
 export const clampProgress = (value: unknown): number => {
   const numeric = typeof value === "number" ? value : Number(value);
@@ -43,4 +43,62 @@ export const getCardProgress = (
   }
 
   return clampProgress(card.progress ?? 0);
+};
+
+/**
+ * Milestone counter of a card ("2 of 4 phases").
+ * `total` is 0 when the card has no tasks.
+ */
+export const getCardMilestones = (
+  card: Pick<Card, "tasks">
+): { finished: number; total: number } => {
+  const tasks = card.tasks ?? [];
+
+  return {
+    finished: tasks.filter((task) => task.finished).length,
+    total: tasks.length,
+  };
+};
+
+/**
+ * Column a card should move to after one of its tasks got finished.
+ * Returns null when the task is not finished, has no target, the target
+ * column does not exist on the board, or the card is already there.
+ */
+export const getTaskTargetColumnId = (
+  task: Pick<Task, "finished" | "targetColumnId"> | undefined,
+  currentColumnId: string,
+  boardColumnIds: Array<string>
+): string | null => {
+  if (!task || !task.finished) return null;
+
+  const target = task.targetColumnId;
+  if (!target || target === currentColumnId) return null;
+  if (!boardColumnIds.includes(target)) return null;
+
+  return target;
+};
+
+/**
+ * Tasks created from the board's default phases.
+ * Phases whose name already exists in `existingTasks` are skipped.
+ */
+export const buildTasksFromPhases = (
+  phases: Array<BoardPhase>,
+  existingTasks: Array<Task>,
+  createId: () => string
+): Array<Task> => {
+  const existingNames = new Set(
+    existingTasks.map((task) => task.name.trim().toLowerCase())
+  );
+
+  return phases
+    .filter((phase) => /\S/.test(phase.name))
+    .filter((phase) => !existingNames.has(phase.name.trim().toLowerCase()))
+    .map((phase) => ({
+      finished: false,
+      id: createId(),
+      name: phase.name.trim(),
+      targetColumnId: phase.targetColumnId ?? null,
+    }));
 };

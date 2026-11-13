@@ -63,6 +63,7 @@ const kanriCardSchema = z.object({
         id: z.string().optional(),
         finished: z.boolean(),
         name: z.string(),
+        targetColumnId: z.string().optional().nullable(),
       })
     )
     .optional(),
@@ -88,6 +89,15 @@ const kanriBoardBackgroundSchema = z
 export const kanriBoardSchema = z.object({
   globalTags: z.array(kanriTagSchema).optional().nullable(),
   members: z.array(kanriBoardMemberSchema).optional().nullable(),
+  defaultPhases: z
+    .array(
+      z.object({
+        name: z.string(),
+        targetColumnId: z.string().optional().nullable(),
+      })
+    )
+    .optional()
+    .nullable(),
   background: kanriBoardBackgroundSchema,
   columns: z.array(kanriColumnSchema),
   id: z.string(),

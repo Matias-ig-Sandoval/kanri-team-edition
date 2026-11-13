@@ -40,8 +40,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
       @removeTag="board.removeGlobalTag"
       @updateTagName="board.updateGlobalTagName"
     />
+    <ModalBoardPhases
+      v-show="editPhasesModalVisible"
+      :phases="boardContent?.defaultPhases ?? []"
+      :columns="boardContent?.columns ?? []"
+      @closeModal="editPhasesModalVisible = false"
+      @setDefaultPhases="board.setDefaultPhases"
+    />
     <ModalEditCard
       v-show="editCardModalVisible"
+      :columns="boardContent?.columns ?? []"
+      :default-phases="boardContent?.defaultPhases ?? []"
+      @taskFinished="moveCardOnTaskFinished"
+      @openPhaseEdit="editPhasesModalVisible = true"
       :card="currentlyActiveCardInfo.card"
       :column-id="currentlyActiveCardInfo.columnId"
       :global-tags="boardContent?.globalTags ?? []"
@@ -151,6 +162,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
               <PhHashStraight class="my-auto size-6" />
               <span class="my-auto ml-0.5 hidden lg:block">
                 {{ $t("pages.kanban.editTags") }}
+              </span>
+            </button>
+            <button
+              class="bg-elevation-1 bg-elevation-2-hover transition-button flex flex-row gap-1 rounded-md px-4 py-1"
+              @click="editPhasesModalVisible = true"
+            >
+              <PhListChecks class="my-auto size-6" />
+              <span class="my-auto ml-0.5 hidden lg:block">
+                {{ $t("pages.kanban.editPhases") }}
               </span>
             </button>
           </div>
@@ -307,7 +327,7 @@ import emitter from "@/utils/emitter";
 
 import { PhotoIcon } from "@heroicons/vue/24/outline";
 import { EllipsisHorizontalIcon, PlusIcon } from "@heroicons/vue/24/solid";
-import { PhHashStraight, PhTrash, PhCopy, PhPencil, PhExport, PhPushPin } from "@phosphor-icons/vue";
+import { PhHashStraight, PhListChecks, PhTrash, PhCopy, PhPencil, PhExport, PhPushPin } from "@phosphor-icons/vue";
 
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
@@ -355,6 +375,7 @@ const deleteBoardModalVisible = ref(false);
 const renameBoardModalVisible = ref(false);
 
 const editTagModalVisible = ref(false);
+const editPhasesModalVisible = ref(false);
 
 const columnRemoveDialog = useConfirmDialog(removeColumnModalVisible);
 const cardRemoveDialog = useConfirmDialog(removeCardModalVisible);
@@ -575,6 +596,21 @@ const openEditCardModal = (columnId: string, el: Card) => {
     editCardModalVisible.value = true;
     draggingEnabled.value = false;
   });
+};
+
+// A finished task with a target column moves the card; keep the open modal
+// pointing at the card's new column so later edits still find it
+const moveCardOnTaskFinished = (
+  columnId: string,
+  cardId: string | undefined,
+  taskId: string | undefined
+) => {
+  const movedToColumnId = board.moveCardOnTaskFinished(columnId, cardId, taskId);
+  if (!movedToColumnId) return;
+
+  if (currentlyActiveCardInfo.card?.id === cardId) {
+    currentlyActiveCardInfo.columnId = movedToColumnId;
+  }
 };
 
 const closeEditCardModal = () => {

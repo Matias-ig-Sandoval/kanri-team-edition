@@ -28,6 +28,13 @@ export declare interface Board {
   title: string;
   globalTags?: Array<Tag> | null;
   members?: Array<BoardMember> | null;
+  /** Template of phases that can be loaded into any card as tasks */
+  defaultPhases?: Array<BoardPhase> | null;
+}
+
+export declare interface BoardPhase {
+  name: string;
+  targetColumnId?: string | null;
 }
 
 export declare interface BoardMember {
@@ -53,6 +60,8 @@ export declare interface Task {
   finished: boolean;
   id?: string;
   name: string;
+  /** Column the card moves to when this task gets finished */
+  targetColumnId?: string | null;
 }
 
 export declare interface Tag {

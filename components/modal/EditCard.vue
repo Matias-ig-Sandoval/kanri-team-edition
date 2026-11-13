@@ -377,7 +377,12 @@ limitations under the License.
                 {{ $t("modals.editCard.taskTitle") }}
               </h2>
               <span v-if="tasks.length !== 0" class="text-dim-1 text-sm"
-                >({{ getCheckedTaskNumber }}/{{ tasks.length }})</span
+                >({{
+                  $t("modals.editCard.milestones", {
+                    finished: getCheckedTaskNumber,
+                    total: tasks.length,
+                  })
+                }})</span
               >
             </div>
             <ProgressRoot
@@ -439,7 +444,9 @@ limitations under the License.
                         <CheckboxRoot
                           v-model:checked="task.finished"
                           class="bg-elevation-4 bg-elevation-2-hover border-elevation-5 flex size-5 shrink-0 appearance-none items-center justify-center rounded-[4px] border outline-none"
-                          @update:checked="updateCardTasks()"
+                          @update:checked="
+                            (checked: boolean) => onTaskChecked(task, checked)
+                          "
                         >
                           <CheckboxIndicator
                             class="flex size-full items-center justify-center rounded"
@@ -473,6 +480,23 @@ limitations under the License.
                       <div
                         class="ml-1 flex h-full shrink-0 flex-row items-end gap-1 self-center"
                       >
+                        <select
+                          class="bg-elevation-2 text-dim-1 mr-1 max-w-[150px] shrink-0 cursor-pointer rounded-md px-1 py-0.5 text-xs outline-none"
+                          :value="taskTargetValue(task)"
+                          :title="$t('modals.editCard.taskTargetTooltip')"
+                          @change="updateTaskTarget(task, $event)"
+                        >
+                          <option value="">
+                            {{ $t("modals.editCard.taskTargetNone") }}
+                          </option>
+                          <option
+                            v-for="column in columns"
+                            :key="column.id"
+                            :value="column.id"
+                          >
+                            → {{ column.title }}
+                          </option>
+                        </select>
                         <button
                           v-if="!taskEditMode"
                           class="shrink-0"
@@ -547,6 +571,21 @@ limitations under the License.
                 <PlusIcon class="text-accent size-6" />
                 <span>{{ $t("modals.editCard.taskAdd") }}</span>
               </button>
+              <div class="mt-1 flex flex-row flex-wrap gap-2">
+                <button
+                  v-if="defaultPhases.length > 0"
+                  class="bg-elevation-3 w-fit rounded-md px-2 py-0.5 text-sm"
+                  @click="loadDefaultPhases"
+                >
+                  {{ $t("modals.editCard.phasesLoad") }}
+                </button>
+                <button
+                  class="bg-elevation-3 w-fit rounded-md px-2 py-0.5 text-sm"
+                  @click="closeModalAndOpenPhaseEdit"
+                >
+                  {{ $t("modals.editCard.phasesEdit") }}
+                </button>
+              </div>
             </div>
           </div>
           <div class="mt-4 flex flex-col pr-6">
@@ -575,8 +614,15 @@ limitations under the License.
 </template>
 
 <script setup lang="ts">
-import type { BoardMember, Card, Task, Tag } from "@/types/kanban-types";
-import { clampProgress } from "@/utils/cardProgress";
+import type {
+  BoardMember,
+  BoardPhase,
+  Card,
+  Column,
+  Task,
+  Tag,
+} from "@/types/kanban-types";
+import { buildTasksFromPhases, clampProgress } from "@/utils/cardProgress";
 import type { Ref } from "vue";
 
 import emitter from "@/utils/emitter";
@@ -602,6 +648,8 @@ const props = defineProps<{
   columnId: string;
   globalTags: Array<Tag>;
   members: Array<BoardMember>;
+  columns: Array<Column>;
+  defaultPhases: Array<BoardPhase>;
 }>();
 
 const emit = defineEmits<{
@@ -665,6 +713,13 @@ const emit = defineEmits<{
     changes: Partial<Omit<BoardMember, "id">>
   ): void;
   (e: "removeMember", memberId: string): void;
+  (
+    e: "taskFinished",
+    columnID: string,
+    cardId: string | undefined,
+    taskId: string | undefined
+  ): void;
+  (e: "openPhaseEdit"): void;
 }>();
 
 const { locale } = useI18n();
@@ -672,9 +727,7 @@ const { locale } = useI18n();
 const columnID = ref("");
 const { textarea: titleTextArea, input: title } = useTextareaAutosize();
 const description = ref("");
-const tasks: Ref<Array<{ finished: boolean; id?: string; name: string }>> = ref(
-  []
-);
+const tasks: Ref<Array<Task>> = ref([]);
 const selectedColor = ref("");
 
 const dueDate: Ref<Date | null> = ref(null);
@@ -874,6 +927,55 @@ const updateTask = (index: number) => {
 
 const updateCardTasks = () => {
   emit("setCardTasks", columnID.value, props.card?.id, tasks.value);
+};
+
+// Saves the tasks; a finished task with a target column moves the card there
+const onTaskChecked = (task: Task, checked: boolean) => {
+  task.finished = checked;
+  updateCardTasks();
+
+  if (checked && task.targetColumnId) {
+    emit("taskFinished", columnID.value, props.card?.id, task.id);
+  }
+};
+
+// Empty when the task has no target or its column no longer exists
+const taskTargetValue = (task: Task) => {
+  if (!task.targetColumnId) return "";
+
+  return props.columns.some((column) => column.id === task.targetColumnId)
+    ? task.targetColumnId
+    : "";
+};
+
+const updateTaskTarget = (task: Task, event: Event) => {
+  const value = (event.target as HTMLSelectElement).value;
+  task.targetColumnId = value || null;
+  updateCardTasks();
+};
+
+// Appends the board's default phases that the card does not have yet
+const loadDefaultPhases = () => {
+  const newTasks = buildTasksFromPhases(
+    props.defaultPhases,
+    tasks.value,
+    generateUniqueID
+  );
+  if (newTasks.length === 0) return;
+
+  tasks.value.push(...newTasks);
+  updateCardTasks();
+};
+
+const closeModalAndOpenPhaseEdit = () => {
+  emit("closeModal", columnID.value);
+  titleEditing.value = false;
+  taskAddMode.value = false;
+  showCustomColorPopup.value = false;
+
+  nextTick(() => {
+    emit("openPhaseEdit");
+  });
 };
 
 const resetDueDate = () => {

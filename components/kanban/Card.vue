@@ -95,28 +95,6 @@ limitations under the License.
           />
 
           <div
-            v-if="tasks && taskCompletionStatus !== '0/0'"
-            :class="{
-              'bg-accent text-buttons rounded-sm px-1': allTasksCompleted,
-            }"
-            class="flex flex-row items-center gap-1"
-          >
-            <PhChecks
-              v-if="allTasksCompleted"
-              class="text-buttons"
-              :class="iconSizeClass"
-            />
-            <PhListChecks v-else :class="[cardTextColorDim, iconSizeClass]" />
-            <span
-              :class="[
-                allTasksCompleted ? 'text-buttons' : cardTextColorDim,
-                taskTextClass,
-              ]"
-              >{{ taskCompletionStatus }}</span
-            >
-          </div>
-
-          <div
             v-if="dueDate"
             class="flex flex-row items-center gap-1"
             :class="{
@@ -150,6 +128,18 @@ limitations under the License.
           class="mt-1 flex w-full flex-row items-center gap-2"
           @click="$emit('openEditCardModal', card)"
         >
+          <template v-if="milestones.total > 0">
+            <PhChecks
+              v-if="allTasksCompleted"
+              class="shrink-0"
+              :class="[cardTextColorDim, iconSizeClass]"
+            />
+            <PhListChecks
+              v-else
+              class="shrink-0"
+              :class="[cardTextColorDim, iconSizeClass]"
+            />
+          </template>
           <div
             class="bg-elevation-3 relative h-1.5 w-full overflow-hidden rounded-full"
           >
@@ -158,9 +148,18 @@ limitations under the License.
               :style="{ width: `${cardProgress}%` }"
             />
           </div>
-          <span class="shrink-0" :class="[cardTextColorDim, taskTextClass]"
-            >{{ cardProgress }}%</span
+          <span
+            class="shrink-0 whitespace-nowrap"
+            :class="[cardTextColorDim, taskTextClass]"
           >
+            <template v-if="milestones.total > 0">{{
+              $t("modals.editCard.milestones", {
+                finished: milestones.finished,
+                total: milestones.total,
+              })
+            }}</template>
+            <template v-else>{{ cardProgress }}%</template>
+          </span>
         </div>
       </div>
     </ContextMenuTrigger>
@@ -197,7 +196,7 @@ limitations under the License.
 import type { BoardMember, Card, Tag } from "@/types/kanban-types";
 
 import { getContrast } from "~/utils/colorUtils";
-import { getCardProgress } from "~/utils/cardProgress";
+import { getCardMilestones, getCardProgress } from "~/utils/cardProgress";
 import { XMarkIcon } from "@heroicons/vue/24/solid";
 import {
   PhCheckCircle,
@@ -328,14 +327,8 @@ const isDescriptionEmpty = computed(() => {
   return false;
 });
 
-const taskCompletionStatus = computed(() => {
-  if (!tasks.value) return "0/0";
-
-  const totalTasks = tasks.value.length;
-  const completedTasks = tasks.value.filter((task) => task.finished).length;
-
-  return `${completedTasks}/${totalTasks}`;
-});
+// Phase/checklist counter shown next to the progress bar
+const milestones = computed(() => getCardMilestones({ tasks: tasks.value }));
 
 const allTasksCompleted = computed(() => {
   if (!tasks.value) return false;

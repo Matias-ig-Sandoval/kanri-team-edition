@@ -20,7 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 import { defineStore } from "pinia";
-import type { Board, BoardMember, Column, Card, Tag } from "@/types/kanban-types";
+import type { Board, BoardMember, BoardPhase, Column, Card, Tag } from "@/types/kanban-types";
+import { getTaskTargetColumnId } from "@/utils/cardProgress";
 import { useTauriStore } from "@/stores/tauriStore";
 import { generateUniqueID } from "@/utils/idGenerator";
 
@@ -281,6 +282,45 @@ export const useBoardsStore = defineStore("boards", {
       }
 
       b.lastEdited = new Date();
+    },
+
+    // Default phases (task template of the board)
+    setDefaultPhases(boardId: string, phases: BoardPhase[]) {
+      const b = this.boardById(boardId);
+      if (!b) return;
+
+      b.defaultPhases = phases
+        .filter(phase => /\S/.test(phase.name))
+        .map(phase => ({
+          name: phase.name.trim(),
+          targetColumnId: phase.targetColumnId || null,
+        }));
+      b.lastEdited = new Date();
+    },
+
+    /**
+     * Moves a card to the target column of one of its tasks, if that task is
+     * finished and points to another existing column of the same board.
+     * Returns the ID of the column the card was moved to, otherwise null.
+     */
+    moveCardOnTaskFinished(boardId: string, columnId: string, cardId: string, taskId: string): string | null {
+      const b = this.boardById(boardId);
+      if (!b) return null;
+      const col = b.columns.find(c => c.id === columnId);
+      if (!col) return null;
+      const card = col.cards.find(c => c.id === cardId);
+      if (!card) return null;
+
+      const task = (card.tasks ?? []).find(t => t.id === taskId);
+      const targetColumnId = getTaskTargetColumnId(
+        task,
+        columnId,
+        b.columns.map(c => c.id)
+      );
+      if (!targetColumnId) return null;
+
+      this.moveCard(boardId, boardId, columnId, targetColumnId, cardId);
+      return targetColumnId;
     },
 
     // Column ops

@@ -34,6 +34,7 @@
     "kanban": {
       "changeBackground": "Cambiar Fondo",
       "editTags": "Editar Etiquetas",
+      "editPhases": "Editar Fases",
       "renameBoardAction": "Renombrar Tablero",
       "duplicateBoardAction": "Duplicar Tablero",
       "exportBoardAction": "Exportar Tablero",
@@ -162,6 +163,13 @@
     }
   },
   "modals": {
+    "boardPhases": {
+      "title": "Fases del Tablero",
+      "description": "Define las fases estándar de este tablero. Cada fase puede mover la tarjeta a una columna al completarse, y se cargan en cualquier tarjeta con un clic.",
+      "listTitle": "Fases por defecto",
+      "empty": "Este tablero aún no tiene fases por defecto.",
+      "namePlaceholder": "Nombre de la fase..."
+    },
     "cardTags": {
       "title": "Editar etiquetas de la carta",
       "description": "Aquí puedes editar tus etiquetas globales, las cuales están disponibles para el tablero completo. Nota: borrar una etiqueta global no la remueve de las cartas, solo la hace indisponible para nuevas cartas.",
@@ -210,7 +218,12 @@
       "membersEdit": "Editar Integrantes del Tablero",
       "memberNamePlaceholder": "Nombre del integrante...",
       "memberRolePlaceholder": "Rol (opcional)",
-      "progressManual": "Avance"
+      "progressManual": "Avance",
+      "milestones": "{finished}/{total} hitos",
+      "taskTargetNone": "Sin cambio de columna",
+      "taskTargetTooltip": "Columna a la que se mueve la tarjeta al completar este ítem",
+      "phasesLoad": "Cargar fases del tablero",
+      "phasesEdit": "Editar fases del tablero"
     },
     "help": {
       "title": "Ayuda & Recursos",
