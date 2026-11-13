@@ -299,16 +299,65 @@ limitations under the License.
             <h2 class="text-lg font-semibold">
               {{ $t("modals.editCard.assigneeTitle") }}
             </h2>
+            <p v-if="cardAssignments.length === 0" class="text-dim-3 mt-1 text-sm">
+              {{ $t("modals.editCard.assigneeNone") }}
+            </p>
+            <div v-else class="mt-1 flex flex-col gap-2">
+              <div
+                v-for="assignment in cardAssignments"
+                :key="assignment.member.id"
+                class="flex flex-row items-center gap-2"
+              >
+                <span
+                  class="size-3 shrink-0 rounded-full"
+                  :class="assignment.member.color ? '' : 'bg-elevation-4'"
+                  :style="
+                    assignment.member.color
+                      ? { 'background-color': assignment.member.color }
+                      : {}
+                  "
+                />
+                <span
+                  class="w-full truncate"
+                  :class="assignment.role === LEAD_ROLE ? 'font-semibold' : ''"
+                  >{{
+                    assignment.member.role
+                      ? `${assignment.member.name} (${assignment.member.role})`
+                      : assignment.member.name
+                  }}</span
+                >
+                <select
+                  class="bg-elevation-2 text-normal w-44 shrink-0 cursor-pointer rounded-md px-1 py-1 text-sm outline-none"
+                  :value="assignment.role"
+                  @change="updateAssignmentRole(assignment.member.id, $event)"
+                >
+                  <option
+                    v-for="role in roleOptions(assignment.role)"
+                    :key="role"
+                    :value="role"
+                  >
+                    {{ roleLabel(role) }}
+                  </option>
+                </select>
+                <button
+                  class="shrink-0"
+                  @click="removeCardAssignment(assignment.member.id)"
+                >
+                  <XMarkIcon class="text-dim-2 text-accent-hover size-4" />
+                </button>
+              </div>
+            </div>
             <select
-              v-model="assigneeId"
-              class="bg-elevation-1 border-elevation-3 text-normal mt-1 w-full rounded-md border px-2 py-1.5 outline-none"
-              @change="updateAssignee"
+              v-if="unassignedMembers.length > 0"
+              class="bg-elevation-1 border-elevation-3 text-normal mt-2 w-full cursor-pointer rounded-md border px-2 py-1.5 outline-none"
+              :value="''"
+              @change="addCardAssignment"
             >
-              <option value="">
-                {{ $t("modals.editCard.assigneeNone") }}
+              <option value="" disabled>
+                {{ $t("modals.editCard.assignmentAdd") }}
               </option>
               <option
-                v-for="member in members"
+                v-for="member in unassignedMembers"
                 :key="member.id"
                 :value="member.id"
               >
@@ -618,10 +667,21 @@ import type {
   BoardMember,
   BoardPhase,
   Card,
+  CardAssignment,
   Column,
   Task,
   Tag,
 } from "@/types/kanban-types";
+import {
+  ASSIGNMENT_ROLES,
+  LEAD_ROLE,
+  addAssignment,
+  assignmentRoleKey,
+  getCardAssignments,
+  removeAssignment,
+  resolveCardAssignments,
+  setAssignmentRole,
+} from "@/utils/cardAssignments";
 import { buildTasksFromPhases, clampProgress } from "@/utils/cardProgress";
 import type { Ref } from "vue";
 
@@ -695,10 +755,10 @@ const emit = defineEmits<{
   (e: "addGlobalTag", tag: Tag): void;
   (e: "openTagEdit"): void;
   (
-    e: "setCardAssignee",
+    e: "setCardAssignments",
     columnID: string,
     cardId: string | undefined,
-    assigneeId: string | null
+    assignments: Array<CardAssignment>
   ): void;
   (
     e: "setCardProgress",
@@ -722,7 +782,7 @@ const emit = defineEmits<{
   (e: "openPhaseEdit"): void;
 }>();
 
-const { locale } = useI18n();
+const { locale, t } = useI18n();
 
 const columnID = ref("");
 const { textarea: titleTextArea, input: title } = useTextareaAutosize();
@@ -739,7 +799,7 @@ const tag = ref("");
 const tags: Ref<Array<Tag>> = ref([]);
 const autocompleteItems: Ref<Array<Tag>> = ref([]);
 
-const assigneeId = ref("");
+const assignments: Ref<Array<CardAssignment>> = ref([]);
 const manualProgress = ref(0);
 const memberManageMode = ref(false);
 const newMemberName = ref("");
@@ -793,13 +853,49 @@ const updateProgress = () => {
   emit("setCardProgress", columnID.value, props.card?.id, manualProgress.value);
 };
 
-const updateAssignee = () => {
-  emit(
-    "setCardAssignee",
-    columnID.value,
-    props.card?.id,
-    assigneeId.value || null
-  );
+// Assignments joined with the board members, lead first
+const cardAssignments = computed(() =>
+  resolveCardAssignments({ assignments: assignments.value }, props.members)
+);
+
+const unassignedMembers = computed(() =>
+  props.members.filter(
+    (member) => !assignments.value.some((a) => a.memberId === member.id)
+  )
+);
+
+// Built-in roles plus the current one, so a custom role stays selectable
+const roleOptions = (currentRole: string) =>
+  ASSIGNMENT_ROLES.includes(currentRole)
+    ? ASSIGNMENT_ROLES
+    : [...ASSIGNMENT_ROLES, currentRole];
+
+const roleLabel = (role: string) => {
+  const key = assignmentRoleKey(role);
+
+  return key ? t(key) : role;
+};
+
+const saveAssignments = (next: Array<CardAssignment>) => {
+  assignments.value = next;
+  emit("setCardAssignments", columnID.value, props.card?.id, next);
+};
+
+const addCardAssignment = (event: Event) => {
+  const select = event.target as HTMLSelectElement;
+  if (!select.value) return;
+
+  saveAssignments(addAssignment(assignments.value, select.value));
+  select.value = "";
+};
+
+const updateAssignmentRole = (memberId: string, event: Event) => {
+  const role = (event.target as HTMLSelectElement).value;
+  saveAssignments(setAssignmentRole(assignments.value, memberId, role));
+};
+
+const removeCardAssignment = (memberId: string) => {
+  saveAssignments(removeAssignment(assignments.value, memberId));
 };
 
 const createMember = () => {
@@ -1069,7 +1165,7 @@ watch(props, (newVal) => {
         : settingsStore.defaultRelativeDueDatesEnabled;
     isDueDateCompleted.value = newVal.card.isDueDateCompleted || false;
 
-    assigneeId.value = newVal.card.assigneeId ?? "";
+    assignments.value = getCardAssignments(newVal.card);
     manualProgress.value = clampProgress(newVal.card.progress ?? 0);
 
     tags.value = newVal.card.tags || [];

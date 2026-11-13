@@ -211,6 +211,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
 
 <script setup lang="ts">
 import type { BoardMember, Card, Tag } from "@/types/kanban-types";
+import { resolveCardAssignments } from "@/utils/cardAssignments";
 import type { Ref } from "vue";
 
 import { applyDrag } from "@/utils/drag-n-drop";
@@ -627,19 +628,19 @@ const filteredCards = computed(() => {
     });
   }
 
-  // check for assignee: filter (member name; "none" matches unassigned cards)
+  // check for assignee: filter (member with any role; "none" = no assignments)
   if (searchQuery.startsWith("assignee:")) {
     const assigneeQuery = searchQuery.substring(9).trim().toLowerCase();
     if (!assigneeQuery) return cards.value;
 
     const boardMembers = props.members ?? [];
     return cards.value.filter((card) => {
-      const assignee = boardMembers.find(
-        (member) => member.id === card.assigneeId
-      );
-      if (!assignee) return assigneeQuery === "none";
+      const assignments = resolveCardAssignments(card, boardMembers);
+      if (assignments.length === 0) return assigneeQuery === "none";
 
-      return assignee.name.toLowerCase().includes(assigneeQuery);
+      return assignments.some((assignment) =>
+        assignment.member.name.toLowerCase().includes(assigneeQuery)
+      );
     });
   }
 

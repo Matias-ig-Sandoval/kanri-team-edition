@@ -21,7 +21,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { computed, toValue } from "vue";
 import type { Ref } from "vue";
-import type { Board, BoardMember, BoardPhase, Card, Column, Tag } from "@/types/kanban-types";
+import type { Board, BoardMember, BoardPhase, Card, CardAssignment, Column, Tag } from "@/types/kanban-types";
+import { getLegacyAssigneeId, normalizeAssignments } from "@/utils/cardAssignments";
 import { useBoardsStore } from "@/stores/boards";
 import { clampProgress } from "@/utils/cardProgress";
 
@@ -202,16 +203,18 @@ export function useBoard(id: string | Ref<string>) {
     });
   };
 
-  const setCardAssignee = (
+  // Also keeps the legacy `assigneeId` pointing at the lead
+  const setCardAssignments = (
     columnId: string,
     cardId: string | undefined,
-    assigneeId: string | null
+    assignments: Array<CardAssignment>
   ) => {
     if (!board.value) return;
     if (!cardId) return;
 
     mutateCard(columnId, cardId, (card) => {
-      card.assigneeId = assigneeId;
+      card.assignments = normalizeAssignments(assignments);
+      card.assigneeId = getLegacyAssigneeId(card.assignments);
     });
   };
 
@@ -321,7 +324,7 @@ export function useBoard(id: string | Ref<string>) {
     setCardTasks,
     setCardDueDate,
     setCardTags,
-    setCardAssignee,
+    setCardAssignments,
     setCardProgress,
 
     // phases

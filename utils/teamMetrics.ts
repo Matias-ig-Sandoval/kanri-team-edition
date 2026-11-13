@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 import type { Board, Column } from "@/types/kanban-types";
+import { LEAD_ROLE, resolveCardAssignments } from "./cardAssignments";
 import { getCardMilestones, getCardProgress } from "./cardProgress";
 
 export type CardStatus = "initial" | "inProgress" | "review" | "done";
@@ -34,7 +35,15 @@ export const CARD_STATUSES: Array<CardStatus> = [
 /** Key of the group that collects cards without a (valid) assignee */
 export const UNASSIGNED_KEY = "__unassigned__";
 
+/**
+ * One participation of a member in a card. A card with several assignees
+ * yields one row per assignee; a card without assignees yields one
+ * unassigned row. `cardKey` identifies the card across those rows.
+ */
 export interface TeamCardRow {
+  cardKey: string;
+  /** Role of the member on this card ("lead", "support", ...); empty when unassigned */
+  assignmentRole: string;
   boardId: string;
   boardTitle: string;
   columnId: string;
@@ -63,6 +72,10 @@ export interface TeamMemberSummary {
   role: string;
   color: string | null;
   total: number;
+  /** Cards where the member has the lead role */
+  leading: number;
+  /** Cards where the member takes part with any other role */
+  supporting: number;
   byStatus: Record<CardStatus, number>;
   overdue: number;
   finished: number;
@@ -148,9 +161,6 @@ export const collectTeamRows = (
       for (const card of column.cards) {
         if (card.name.startsWith("---")) continue;
 
-        const member = card.assigneeId
-          ? members.find((m) => m.id === card.assigneeId)
-          : undefined;
         const milestones = getCardMilestones(card);
         const progress = getCardProgress(card);
         const dueDate = toIsoDate(card.dueDate);
@@ -161,7 +171,8 @@ export const collectTeamRows = (
           !card.isDueDateCompleted &&
           !finished;
 
-        rows.push({
+        const cardFields = {
+          cardKey: `${board.id}/${column.id}/${card.id ?? card.name}`,
           boardId: board.id,
           boardTitle: board.title,
           columnId: column.id,
@@ -169,17 +180,43 @@ export const collectTeamRows = (
           status,
           cardId: card.id ?? "",
           cardName: card.name,
-          memberKey: member ? normalizeMemberName(member.name) : UNASSIGNED_KEY,
-          memberName: member ? member.name.trim() : "",
-          memberRole: member?.role?.trim() ?? "",
-          memberColor: member?.color ?? null,
           progress,
           milestonesFinished: milestones.finished,
           milestonesTotal: milestones.total,
           dueDate,
           overdue,
           finished,
-        });
+        };
+
+        const assignments = resolveCardAssignments(card, members);
+        if (assignments.length === 0) {
+          rows.push({
+            ...cardFields,
+            assignmentRole: "",
+            memberKey: UNASSIGNED_KEY,
+            memberName: "",
+            memberRole: "",
+            memberColor: null,
+          });
+          continue;
+        }
+
+        // Two board members with the same name count as one person
+        const seenMembers = new Set<string>();
+        for (const { member, role } of assignments) {
+          const memberKey = normalizeMemberName(member.name);
+          if (seenMembers.has(memberKey)) continue;
+          seenMembers.add(memberKey);
+
+          rows.push({
+            ...cardFields,
+            assignmentRole: role,
+            memberKey,
+            memberName: member.name.trim(),
+            memberRole: member.role?.trim() ?? "",
+            memberColor: member.color ?? null,
+          });
+        }
       }
     });
   }
@@ -197,12 +234,17 @@ export const filterTeamRows = (
       (!filter.memberKey || row.memberKey === filter.memberKey)
   );
 
-export const computeTeamTotals = (rows: Array<TeamCardRow>): TeamTotals => ({
-  total: rows.length,
-  averageProgress: average(rows.map((row) => row.progress)),
-  finished: rows.filter((row) => row.finished).length,
-  overdue: rows.filter((row) => row.overdue).length,
-});
+/** Totals over distinct cards: a card with several assignees counts once */
+export const computeTeamTotals = (rows: Array<TeamCardRow>): TeamTotals => {
+  const cards = [...new Map(rows.map((row) => [row.cardKey, row])).values()];
+
+  return {
+    total: cards.length,
+    averageProgress: average(cards.map((card) => card.progress)),
+    finished: cards.filter((card) => card.finished).length,
+    overdue: cards.filter((card) => card.overdue).length,
+  };
+};
 
 /**
  * Metrics per member, sorted by name with the unassigned group last.
@@ -222,6 +264,8 @@ export const summarizeMembers = (
         role: row.memberRole,
         color: row.memberColor,
         total: 0,
+        leading: 0,
+        supporting: 0,
         byStatus: { initial: 0, inProgress: 0, review: 0, done: 0 },
         overdue: 0,
         finished: 0,
@@ -235,6 +279,8 @@ export const summarizeMembers = (
     if (!group.color && row.memberColor) group.color = row.memberColor;
 
     group.total += 1;
+    if (row.assignmentRole === LEAD_ROLE) group.leading += 1;
+    else if (row.assignmentRole) group.supporting += 1;
     group.byStatus[row.status] += 1;
     if (row.overdue) group.overdue += 1;
     if (row.finished) group.finished += 1;
@@ -274,10 +320,12 @@ export const collectMemberOptions = (
 
 /** Texts of the report that depend on the active language */
 export interface TeamReportLabels {
-  /** Member, Role, Board, Task, Column, Status, Phases, Progress, Due date */
-  headers: [string, string, string, string, string, string, string, string, string];
+  /** Member, Role, Task role, Board, Task, Column, Status, Phases, Progress, Due date */
+  headers: Array<string>;
   unassigned: string;
   statuses: Record<CardStatus, string>;
+  /** Label of a role on a card ("lead" -> "Líder / A cargo") */
+  formatRole: (role: string) => string;
   formatDate: (isoDate: string) => string;
 }
 
@@ -287,6 +335,7 @@ const reportCells = (
 ): Array<string> => [
   row.memberKey === UNASSIGNED_KEY ? labels.unassigned : row.memberName,
   row.memberRole,
+  row.assignmentRole ? labels.formatRole(row.assignmentRole) : "",
   row.boardTitle,
   row.cardName,
   row.columnTitle,

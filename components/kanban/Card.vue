@@ -112,14 +112,39 @@ limitations under the License.
           </div>
 
           <div
-            v-if="assignee"
-            class="flex max-w-full flex-row items-center gap-1 rounded-sm px-1"
-            :class="assignee.color ? '' : 'bg-elevation-3'"
-            :style="assigneeBadgeStyle"
-            :title="assignee.role ? `${assignee.name} (${assignee.role})` : assignee.name"
+            v-if="leadAssignment"
+            class="flex max-w-full flex-row items-center gap-1"
           >
-            <PhUser :class="iconSizeClass" />
-            <span class="truncate" :class="taskTextClass">{{ assignee.name }}</span>
+            <div
+              class="flex min-w-0 flex-row items-center gap-1 rounded-sm px-1 font-semibold"
+              :class="leadAssignment.member.color ? '' : 'bg-elevation-3'"
+              :style="memberBadgeStyle(leadAssignment.member)"
+              :title="assignmentTitle(leadAssignment)"
+            >
+              <PhUser class="shrink-0" :class="iconSizeClass" />
+              <span class="truncate" :class="taskTextClass">{{
+                leadAssignment.member.name
+              }}</span>
+            </div>
+            <span
+              v-for="assignment in visibleCollaborators"
+              :key="assignment.member.id"
+              class="shrink-0 rounded-full px-1.5"
+              :class="[
+                taskTextClass,
+                assignment.member.color ? '' : 'bg-elevation-3',
+              ]"
+              :style="memberBadgeStyle(assignment.member)"
+              :title="assignmentTitle(assignment)"
+              >{{ getMemberInitials(assignment.member.name) }}</span
+            >
+            <span
+              v-if="hiddenCollaborators.length > 0"
+              class="bg-elevation-3 shrink-0 rounded-full px-1.5"
+              :class="taskTextClass"
+              :title="hiddenCollaborators.map(assignmentTitle).join(', ')"
+              >+{{ hiddenCollaborators.length }}</span
+            >
           </div>
         </div>
 
@@ -197,6 +222,12 @@ import type { BoardMember, Card, Tag } from "@/types/kanban-types";
 
 import { getContrast } from "~/utils/colorUtils";
 import { getCardMilestones, getCardProgress } from "~/utils/cardProgress";
+import {
+  assignmentRoleKey,
+  getMemberInitials,
+  resolveCardAssignments,
+} from "~/utils/cardAssignments";
+import type { ResolvedAssignment } from "~/utils/cardAssignments";
 import { XMarkIcon } from "@heroicons/vue/24/solid";
 import {
   PhCheckCircle,
@@ -236,7 +267,9 @@ const emit = defineEmits<{
   (e: "duplicateCard", cardId: string | undefined): void;
 }>();
 
-const { locale } = useI18n();
+const { locale, t } = useI18n();
+
+const MAX_VISIBLE_COLLABORATORS = 2;
 
 const globalSettingsStore = useSettingsStore();
 const themeStore = useThemeStore();
@@ -281,31 +314,43 @@ const cardHasNoExtraProperties = computed(() => {
     isDescriptionEmpty &&
     !dueDate.value &&
     (props.card.tags || []).length === 0 &&
-    !assignee.value &&
+    !leadAssignment.value &&
     !showProgressBar.value &&
     !props.card.name.startsWith("---")
   );
 });
 
-const assignee = computed(() => {
-  if (!props.card.assigneeId) return null;
+// Members working on the card, lead first
+const cardAssignments = computed(() =>
+  resolveCardAssignments(props.card, props.members ?? [])
+);
 
-  return (
-    (props.members ?? []).find(
-      (member) => member.id === props.card.assigneeId
-    ) ?? null
-  );
-});
+// The lead, or the first member when nobody has the lead role
+const leadAssignment = computed(() => cardAssignments.value[0] ?? null);
 
-const assigneeBadgeStyle = computed(() => {
-  const color = assignee.value?.color;
-  if (!color) return {};
+// Shown as initials next to the lead; those past the second become "+N"
+const collaborators = computed(() => cardAssignments.value.slice(1));
+const visibleCollaborators = computed(() =>
+  collaborators.value.slice(0, MAX_VISIBLE_COLLABORATORS)
+);
+const hiddenCollaborators = computed(() =>
+  collaborators.value.slice(MAX_VISIBLE_COLLABORATORS)
+);
+
+const memberBadgeStyle = (member: BoardMember) => {
+  if (!member.color) return {};
 
   return {
-    "background-color": color,
-    color: getContrast(color) === "text-gray-50" ? "#f4f4f5" : "#1e293b",
+    "background-color": member.color,
+    color: getContrast(member.color) === "text-gray-50" ? "#f4f4f5" : "#1e293b",
   };
-});
+};
+
+const assignmentTitle = (assignment: ResolvedAssignment) => {
+  const roleKey = assignmentRoleKey(assignment.role);
+
+  return `${assignment.member.name} (${roleKey ? t(roleKey) : assignment.role})`;
+};
 
 // Derived from tasks when the card has any, otherwise the manual value
 const cardProgress = computed(() =>

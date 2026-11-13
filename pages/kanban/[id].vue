@@ -57,7 +57,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
       :column-id="currentlyActiveCardInfo.columnId"
       :global-tags="boardContent?.globalTags ?? []"
       :members="boardContent?.members ?? []"
-      @setCardAssignee="board.setCardAssignee"
+      @setCardAssignments="board.setCardAssignments"
       @setCardProgress="board.setCardProgress"
       @addMember="board.addMember"
       @updateMember="board.updateMember"

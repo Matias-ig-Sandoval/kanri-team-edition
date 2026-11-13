@@ -52,6 +52,10 @@ const kanriBoardMemberSchema = z.object({
 
 const kanriCardSchema = z.object({
   assigneeId: z.string().optional().nullable(),
+  assignments: z
+    .array(z.object({ memberId: z.string(), role: z.string() }))
+    .optional()
+    .nullable(),
   progress: z.number().min(0).max(100).optional().nullable(),
   color: z.string().optional(),
   description: z.string().optional(),

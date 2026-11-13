@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { defineStore } from "pinia";
 import type { Board, BoardMember, BoardPhase, Column, Card, Tag } from "@/types/kanban-types";
 import { getTaskTargetColumnId } from "@/utils/cardProgress";
+import { getLegacyAssigneeId, removeAssignment } from "@/utils/cardAssignments";
 import { useTauriStore } from "@/stores/tauriStore";
 import { generateUniqueID } from "@/utils/idGenerator";
 
@@ -277,7 +278,12 @@ export const useBoardsStore = defineStore("boards", {
       // Unassign the removed member from all cards on this board
       for (const col of b.columns) {
         for (const card of col.cards) {
-          if (card.assigneeId === memberId) card.assigneeId = null;
+          if (Array.isArray(card.assignments)) {
+            card.assignments = removeAssignment(card.assignments, memberId);
+            card.assigneeId = getLegacyAssigneeId(card.assignments);
+          } else if (card.assigneeId === memberId) {
+            card.assigneeId = null;
+          }
         }
       }
 

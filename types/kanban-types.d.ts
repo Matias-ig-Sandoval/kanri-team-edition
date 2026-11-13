@@ -32,6 +32,15 @@ export declare interface Board {
   defaultPhases?: Array<BoardPhase> | null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export declare type CardAssignmentRole = "lead" | "support" | "reviewer" | (string & {});
+
+export declare interface CardAssignment {
+  /** ID of a BoardMember in the parent board's `members` list */
+  memberId: string;
+  role: CardAssignmentRole;
+}
+
 export declare interface BoardPhase {
   name: string;
   targetColumnId?: string | null;
@@ -72,8 +81,13 @@ export declare interface Tag {
 }
 
 export declare interface Card {
-  /** ID of a BoardMember in the parent board's `members` list */
+  /**
+   * Legacy single assignee (ID of a BoardMember). Kept in sync with the lead
+   * of `assignments`; read cards through `getCardAssignments` instead.
+   */
   assigneeId?: string | null;
+  /** Members working on the card, each with their role on this card */
+  assignments?: Array<CardAssignment> | null;
   /** Manual progress (0-100). Ignored while the card has tasks. */
   progress?: number | null;
   color?: string;

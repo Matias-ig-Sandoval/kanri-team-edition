@@ -162,6 +162,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
             <span class="bg-elevation-3 rounded-sm px-2 py-0.5">{{
               $t("pages.team.cardCount", { count: member.total })
             }}</span>
+            <template v-if="member.key !== UNASSIGNED_KEY">
+              <span class="bg-elevation-3 rounded-sm px-2 py-0.5">{{
+                $t("pages.team.leadCount", { count: member.leading })
+              }}</span>
+              <span class="bg-elevation-3 rounded-sm px-2 py-0.5">{{
+                $t("pages.team.supportCount", { count: member.supporting })
+              }}</span>
+            </template>
             <span
               v-for="status in CARD_STATUSES"
               :key="status"
@@ -184,6 +192,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
                   {{ $t("pages.team.columnTask") }}
                 </th>
                 <th class="py-2 pr-4 font-medium">
+                  {{ $t("pages.team.columnTaskRole") }}
+                </th>
+                <th class="py-2 pr-4 font-medium">
                   {{ $t("pages.team.columnBoard") }}
                 </th>
                 <th class="py-2 pr-4 font-medium">
@@ -203,12 +214,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
             <tbody>
               <tr
                 v-for="card in member.cards"
-                :key="`${card.boardId}-${card.columnId}-${card.cardId}`"
+                :key="`${card.cardKey}/${card.memberKey}`"
                 class="border-elevation-3 bg-elevation-2-hover cursor-pointer border-t"
                 :title="$t('pages.team.openBoard', { board: card.boardTitle })"
                 @click="openBoard(card.boardId)"
               >
                 <td class="max-w-72 truncate py-2 pr-4">{{ card.cardName }}</td>
+                <td
+                  class="whitespace-nowrap py-2 pr-4"
+                  :class="card.assignmentRole === LEAD_ROLE ? 'font-semibold' : ''"
+                >
+                  {{ card.assignmentRole ? formatRole(card.assignmentRole) : "–" }}
+                </td>
                 <td class="text-accent max-w-48 truncate py-2 pr-4 underline">
                   {{ card.boardTitle }}
                 </td>
@@ -272,6 +289,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 
 import { useTeamMetrics } from "@/composables/useTeamMetrics";
+import { LEAD_ROLE, assignmentRoleKey } from "@/utils/cardAssignments";
 import {
   CARD_STATUSES,
   UNASSIGNED_KEY,
@@ -355,6 +373,13 @@ const toggleExpanded = (key: string) => {
 const formatDate = (isoDate: string) =>
   new Date(isoDate).toLocaleDateString(locale.value.replace("_", "-"));
 
+// Label of a member's role on a card; custom roles are shown as typed
+const formatRole = (role: string) => {
+  const key = assignmentRoleKey(role);
+
+  return key ? t(key) : role;
+};
+
 const openBoard = (boardId: string) => {
   router.push(`/kanban/${boardId}`);
 };
@@ -363,6 +388,7 @@ const reportLabels = computed<TeamReportLabels>(() => ({
   headers: [
     t("pages.team.columnMember"),
     t("pages.team.columnRole"),
+    t("pages.team.columnTaskRole"),
     t("pages.team.columnBoard"),
     t("pages.team.columnTask"),
     t("pages.team.columnColumn"),
@@ -373,6 +399,7 @@ const reportLabels = computed<TeamReportLabels>(() => ({
   ],
   unassigned: t("pages.team.unassigned"),
   statuses: statusLabels.value,
+  formatRole,
   formatDate,
 }));
 
