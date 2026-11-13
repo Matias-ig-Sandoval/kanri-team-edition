@@ -52,6 +52,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
         </template>
       </Tooltip>
 
+      <Tooltip :label="$t('components.sidebar.team')">
+        <template #trigger>
+          <nuxt-link to="/team">
+            <div class="bg-elevation-2-hover transition-button rounded-md p-2">
+              <PhUsersThree class="size-7" />
+            </div>
+          </nuxt-link>
+        </template>
+      </Tooltip>
+
       <Tooltip v-if="showSidebarBackArrow" :label="$t('components.sidebar.back')">
         <template #trigger>
           <button
@@ -119,6 +129,7 @@ import {
   PhArrowsLeftRight,
   PhGearSix,
   PhQuestion,
+  PhUsersThree,
 } from "@phosphor-icons/vue";
 
 const { showSidebarAddButton, showSidebarBackArrow, showSidebarHelpModal } = storeToRefs(useLayoutStore());
