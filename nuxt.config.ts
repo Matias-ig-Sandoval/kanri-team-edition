@@ -46,7 +46,7 @@ export default defineNuxtConfig({
       { code: "th", name: "ภาษาไทย", file: "th.json" },
       { code: "ja", name: "日本語", file: "ja.json" },
     ],
-    defaultLocale: "en",
+    defaultLocale: "es",
     langDir: "locales/",
     strategy: "no_prefix",
     skipSettingLocaleOnNavigate: false,

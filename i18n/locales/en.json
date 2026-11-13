@@ -160,7 +160,8 @@
         "deleteAllColumnCardsConfirmationTitle": "Delete all cards in this column"
       },
       "searchBar": {
-        "placeholder": "Search for cards..."
+        "placeholder": "Search for cards...",
+        "assigneeFilter": "search by assigned member"
       },
       "zoomAdjustment": {
         "reset": "Reset zoom level",

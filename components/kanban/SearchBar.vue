@@ -75,7 +75,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
           class="group/item bg-elevation-2-hover flex cursor-pointer items-center justify-between rounded-md p-1 py-1.5"
           @mousedown="addFilter('assignee:')"
         >
-          <span>assignee: search by assigned member</span>
+          <span
+            >assignee:
+            {{ $t("components.kanban.searchBar.assigneeFilter") }}</span
+          >
           <span class="group/edit invisible group-hover/item:visible">+</span>
         </li>
       </ul>

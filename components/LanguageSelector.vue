@@ -91,6 +91,6 @@ const tooltipClass = computed(() => {
 });
 
 watch(selectedLocale, (newLocale) => {
-  setLang(newLocale ?? "en");
+  setLang(newLocale ?? "es");
 });
 </script>

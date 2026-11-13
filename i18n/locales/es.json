@@ -151,7 +151,8 @@
         "deleteCardConfirmation": "¿Estás seguro de querer borrar la carta '{cardName}? Esta acción es irreversible."
       },
       "searchBar": {
-        "placeholder": "Buscar cartas..."
+        "placeholder": "Buscar cartas...",
+        "assigneeFilter": "buscar por responsable"
       },
       "zoomAdjustment": {
         "reset": "Restablecer nivel de zoom",

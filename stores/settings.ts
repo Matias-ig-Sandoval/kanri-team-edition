@@ -28,7 +28,7 @@ export const useSettingsStore = defineStore("settings", {
   const reverseSorting = ref(false);
 
     /* Overall app settings */
-    const locale = ref("en");
+    const locale = ref("es");
     const animationsEnabled = ref(true);
     const autostartEnabled = ref(false);
     const disableSpellcheck = ref(false);
@@ -59,7 +59,7 @@ export const useSettingsStore = defineStore("settings", {
     async loadSettings() {
       const store = useTauriStore().store;
 
-      const localeSaved: string = await store.get("locale") ?? "en";
+      const localeSaved: string = await store.get("locale") ?? "es";
       const animationsEnabledSaved: boolean = await store.get("animationsEnabled") ?? true;
       const autostartEnabledSaved: boolean = await isEnabled() ?? false;
 
